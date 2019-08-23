@@ -1,0 +1,10 @@
+# Export the VM
+vagrant package vm.gz
+
+# Extract (Do not overwrite the Vagrantfile!)
+tar -xvf vm.gz -C /target/directory
+
+# Import the bootable virtual disk into Google Cloud
+gcloud beta compute images import rabbitmq-server \
+    --source-file centos7-rabbitmq-server.vmdk \
+    --os centos-7
