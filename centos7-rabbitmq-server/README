@@ -5,6 +5,6 @@ vagrant package vm.gz
 tar -xvf vm.gz -C /target/directory
 
 # Import the bootable virtual disk into Google Cloud
-gcloud beta compute images import rabbitmq-server \
+gcloud beta compute images import centos-7-rabbitmq-server \
     --source-file centos7-rabbitmq-server.vmdk \
     --os centos-7
