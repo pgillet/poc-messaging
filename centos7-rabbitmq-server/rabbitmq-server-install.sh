@@ -8,6 +8,8 @@ FQDN=$(hostname --fqdn)
 # Determine the BIOS vendor
 VENDOR=$(dmidecode -s bios-vendor)
 
+FIRST_CLUSTER_MEMBER=${FIRST_CLUSTER_MEMBER:-rabbitmq-server-01}
+
 # See https://www.rabbitmq.com/install-rpm.html
 
 # Install pygpgme, a package which allows yum to handle gpg signatures, 
@@ -118,7 +120,7 @@ chkconfig rabbitmq-server on
 /sbin/service rabbitmq-server start
 
 
-if [[ "${HOSTNAME}" == rabbitmq-server-01 ]]; then 
+if [[ "${HOSTNAME}" == ${FIRST_CLUSTER_MEMBER} ]]; then 
 	# Access control
 	# Create a RabbitMQ user called "meteofr"
 	rabbitmqctl add_user meteofr meteofr
@@ -139,7 +141,7 @@ if [[ "${HOSTNAME}" == rabbitmq-server-01 ]]; then
 else 
 	# Clustering
 	rabbitmqctl stop_app
-	rabbitmqctl join_cluster rabbit@rabbitmq-server-01
+	rabbitmqctl join_cluster rabbit@${FIRST_CLUSTER_MEMBER}
 	rabbitmqctl start_app
 fi
 
