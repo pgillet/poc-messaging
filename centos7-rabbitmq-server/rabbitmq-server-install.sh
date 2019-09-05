@@ -2,14 +2,77 @@
 
 # sudo-enabled user on the VM: vagrant/vagrant
 
-HOSTNAME=$(hostname --short)
-FQDN=$(hostname --fqdn)
+# Install Consul client agent
+# See https://learn.hashicorp.com/consul/datacenter-deploy/deployment-guide
 
-# Determine the BIOS vendor
-VENDOR=$(dmidecode -s bios-vendor)
+yum install -y -q unzip
 
-FIRST_CLUSTER_MEMBER=${FIRST_CLUSTER_MEMBER:-rabbitmq-server-01}
+CONSUL_VERSION=1.6.0
 
+# Download Consul
+curl --silent --remote-name https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip
+curl --silent --remote-name https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_SHA256SUMS
+curl --silent --remote-name https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_SHA256SUMS.sig
+
+# Install Consul
+unzip consul_${CONSUL_VERSION}_linux_amd64.zip
+#chown root:root consul
+mv consul /usr/local/bin/
+#consul --version
+
+#consul -autocomplete-install
+#complete -C /usr/local/bin/consul consul
+
+useradd --system --home /etc/consul.d --shell /bin/false consul
+mkdir --parents /opt/consul
+chown --recursive consul:consul /opt/consul
+
+# Configure systemd
+cat <<EOM > /etc/systemd/system/consul.service
+[Unit]
+Description="HashiCorp Consul - A service mesh solution"
+Documentation=https://www.consul.io/
+Requires=network-online.target
+After=network-online.target
+ConditionFileNotEmpty=/etc/consul.d/consul.hcl
+
+[Service]
+User=consul
+Group=consul
+ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+ExecReload=/usr/local/bin/consul reload
+KillMode=process
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+EOM
+
+# Configure Consul (server)
+mkdir --parents /etc/consul.d
+
+# Cluster auto-join configuration
+cat <<EOM > /etc/consul.d/consul.hcl
+datacenter = "dc1"
+data_dir = "/opt/consul"
+encrypt = "Luj2FZWwlt8475wD1WtwUQ=="
+retry_join = ["consul-01", "consul-02", "consul-03"]
+performance {
+  raft_multiplier = 1
+}
+EOM
+
+chown --recursive consul:consul /etc/consul.d
+chmod 640 /etc/consul.d/consul.hcl
+
+# Start Consul
+systemctl enable consul
+systemctl start consul
+systemctl status consul
+
+
+# Install RabbitMQ server
 # See https://www.rabbitmq.com/install-rpm.html
 
 # Install pygpgme, a package which allows yum to handle gpg signatures, 
@@ -94,56 +157,26 @@ echo "[rabbitmq_management,rabbitmq_mqtt,rabbitmq_peer_discovery_consul]." > /et
 # Clustering - Peer discovery using Consul
 cat <<EOM > /etc/rabbitmq/rabbitmq.conf
 cluster_formation.peer_discovery_backend = rabbit_peer_discovery_consul
-cluster_formation.consul.host = consul
+# do compute service address
+cluster_formation.consul.svc_addr_auto = true
+# compute service address using node name
+cluster_formation.consul.svc_addr_use_nodename = true
+# use long RabbitMQ node names?
+cluster_formation.consul.use_longname = true
 EOM
 
 # Erlang cookie
 # Shared secret that must be present on all cluster nodes for inter-node network connectivity and authentication
-# TODO: Use Consul key-value store to manage the Erlang cookie?
+# Key "rabbitmq/erlang_cookie" must be stored in Consul
+ERLANG_COOKIE=$(consul kv get rabbitmq/erlang_cookie)
+echo ${ERLANG_COOKIE} > /var/lib/rabbitmq/.erlang.cookie
 
-if [ "${VENDOR}" = Google ]; then
-	# Google Cloud Platform
-
-	METADATA_REQUEST=http://metadata.google.internal/computeMetadata/v1/instance/attributes/ERLANG_COOKIE
-	HTTP_CODE=$(curl --write-out %{http_code} --output /dev/null -s -H "Metadata-Flavor: Google" ${METADATA_REQUEST})
-	if [ "${HTTP_CODE}" = 200 ]; then
-		ERLANG_COOKIE=$(curl -s -H "Metadata-Flavor: Google" ${METADATA_REQUEST})
-	fi
-fi
-
-if [[ -n "${ERLANG_COOKIE}" ]]; then
-	echo -n ${ERLANG_COOKIE} > /var/lib/rabbitmq/.erlang.cookie
-fi
+chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
+chmod 400 /var/lib/rabbitmq/.erlang.cookie
 
 # Start the server
 chkconfig rabbitmq-server on
 /sbin/service rabbitmq-server start
-
-
-if [[ "${HOSTNAME}" == ${FIRST_CLUSTER_MEMBER} ]]; then 
-	# Access control
-	# Create a RabbitMQ user called "meteofr"
-	rabbitmqctl add_user meteofr meteofr
-
-	# Create a new virtual host called "test"
-	rabbitmqctl add_vhost test
-
-	# Grant the user named "meteofr" access to the virtual host called "test", 
-	# with configure permissions on all resources whose names starts with "meteofr-", 
-	# and write and read permissions on all resources
-	rabbitmqctl set_permissions -p test meteofr "^meteofr-.*" ".*" ".*"
-
-	# Tag the user with "administrator" for full management UI and HTTP API access
-	rabbitmqctl set_user_tags meteofr administrator
-
-	# Delete the defaut guest user as a primary security measure
-	rabbitmqctl delete_user guest
-else 
-	# Clustering
-	rabbitmqctl stop_app
-	rabbitmqctl join_cluster rabbit@${FIRST_CLUSTER_MEMBER}
-	rabbitmqctl start_app
-fi
 
 # Check on service status as observed by service manager
 service rabbitmq-server status

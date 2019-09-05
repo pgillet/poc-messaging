@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Install Consul server agent
 # See https://learn.hashicorp.com/consul/datacenter-deploy/deployment-guide
 
 yum install -y unzip
