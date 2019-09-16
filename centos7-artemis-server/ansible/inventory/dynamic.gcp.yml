@@ -1,0 +1,12 @@
+plugin: gcp_compute
+projects:
+  - meteofrance-poc-messaging
+auth_kind: serviceaccount
+service_account_file: /home/pascal/Downloads/meteofrance-poc-messaging-ansible-sa.json
+filters:
+  - name = artemis-broker-03
+keyed_groups:
+  - separator: ''
+    key: labels['group']
+compose:
+  artemis_host: networkInterfaces[0].networkIP

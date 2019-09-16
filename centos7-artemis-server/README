@@ -1,1 +1,9 @@
 gcloud compute --project=meteofrance-poc-messaging firewall-rules create artemis --direction=INGRESS --priority=1000 --network=default --action=ALLOW --rules=tcp:8161 --source-ranges=0.0.0.0/0 --target-tags=artemis-broker
+
+
+
+
+Ansible prerequisistes:
+
+https://cloud.google.com/compute/docs/instances/managing-instance-access
+https://alex.dzyoba.com/blog/gcp-ansible-service-account/

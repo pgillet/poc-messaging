@@ -18,7 +18,7 @@
 	xmlns="urn:org:jgroups"
         xsi:schemaLocation="urn:org:jgroups http://www.jgroups.org/schema/jgroups.xsd">
     <TCP bind_port="7800"
-	    bind_addr="${BIND_ADDR}"
+         bind_addr="{{ artemis_host }}"
          loopback="true"
          recv_buf_size="${tcp.recv_buf_size:5M}"
          send_buf_size="${tcp.send_buf_size:5M}"
@@ -51,11 +51,7 @@
 
     <!-- a location that can be found by both server's running -->
     <!--FILE_PING location="../../file.ping.dir"/-->
-    <GOOGLE_PING
-	    location="${your-jgroups-bucket}"
-	    access_key="${your-access-key}"
-	    secret_access_key="${your-secret}"
-	    timeout="2000" num_initial_members="3"/>
+    {{ artemis_jgroups_ping }}
 
     <MERGE3  min_interval="10000"
              max_interval="30000"/>
