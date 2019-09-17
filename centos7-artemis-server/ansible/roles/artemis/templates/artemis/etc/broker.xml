@@ -50,6 +50,8 @@ under the License.
 
       <journal-pool-files>{{ _broker.journal_pool_files }}</journal-pool-files>
 
+      <journal-file-size>10M</journal-file-size>
+
       <!--
         You can verify the network health of a particular NIC by specifying the <network-check-NIC> element.
          <network-check-NIC>theNicName</network-check-NIC>
@@ -113,6 +115,13 @@ under the License.
 
       -->
 
+      <connectors>
+         <!-- Connector used to be announced through cluster connections and notifications -->
+         {% for connector in _broker.connectors  %}
+         <connector name="{{ connector.name }}">{{ connector.url }}</connector>
+         {% endfor %}
+      </connectors>
+
       <acceptors>
 
          <!-- useEpoll means: it will use Netty epoll if you are on a system (Linux) that supports it -->
@@ -122,6 +131,61 @@ under the License.
          <acceptor name="{{ acceptor.name }}">{{ acceptor.url }}</acceptor>
          {% endfor %}
       </acceptors>
+
+      <cluster-user>{{ _broker.cluster_user }}</cluster-user>
+
+      <cluster-password>{{ _broker.cluster_password }}</cluster-password>
+
+      <!-- Dynamic server discovery with JGroups -->
+      <broadcast-groups>
+         <broadcast-group name="{{ _broker.broadcast_group }}">
+            <broadcast-period>5000</broadcast-period>
+            <jgroups-file>{{ _broker.jgroups_file }}</jgroups-file>
+            <jgroups-channel>{{ _broker.jgroups_channel }}</jgroups-channel>
+            <connector-ref>{{ _broker.connector_ref }}</connector-ref>
+         </broadcast-group>
+      </broadcast-groups>
+
+      <discovery-groups>
+         <discovery-group name="{{ _broker.discovery_group }}">
+            <jgroups-file>{{ _broker.jgroups_file }}</jgroups-file>
+            <jgroups-channel>{{ _broker.jgroups_channel }}</jgroups-channel>
+            <refresh-timeout>10000</refresh-timeout>
+         </discovery-group>
+      </discovery-groups>
+
+      <!-- Dynamic server discovery with UDP multicast -->
+      <!--
+      <broadcast-groups>
+         <broadcast-group name="{{ _broker.broadcast_group }}">
+            <group-address>{{ _broker.group_address }}</group-address>
+            <group-port>{{ _broker.group_port }}</group-port>
+            <broadcast-period>5000</broadcast-period>
+            <connector-ref>{{ _broker.connector_ref }}</connector-ref>
+         </broadcast-group>
+      </broadcast-groups>
+
+      <discovery-groups>
+         <discovery-group name="{{ _broker.discovery_group }}">
+            <group-address>{{ _broker.group_address }}</group-address>
+            <group-port>{{ _broker.group_port }}</group-port>
+            <refresh-timeout>10000</refresh-timeout>
+         </discovery-group>
+      </discovery-groups>
+      -->
+
+      <cluster-connections>
+         <cluster-connection name="{{ _broker.cluster_connection }}">
+            <connector-ref>{{ _broker.connector_ref }}</connector-ref>
+            <message-load-balancing>ON_DEMAND</message-load-balancing>
+            <max-hops>0</max-hops>
+            <discovery-group-ref discovery-group-name="{{ _broker.discovery_group }}"/>
+         </cluster-connection>
+      </cluster-connections>
+
+      <ha-policy>
+         <{{ _broker.replicated }}><{{ _broker.slave }}/></{{ _broker.replicated }}>
+      </ha-policy>
 
 
       <security-settings>

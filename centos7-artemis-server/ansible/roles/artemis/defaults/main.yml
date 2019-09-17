@@ -42,6 +42,11 @@ artemis_journal_buffer_timeouts:
   ASYNCIO: "500000"
 artemis_journal_buffer_timeout: "{{ artemis_journal_buffer_timeouts[artemis_journal_type] }}"
 
+
+artemis_connectors:
+  - name: "{{ artemis_connector_ref }}"
+    url: "tcp://{{ artemis_host }}:{{ artemis_port_artemis }}"
+
 artemis_acceptors:
   - name: "artemis"
     url: "tcp://{{ artemis_host }}:{{ artemis_port_artemis }}?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;protocols=CORE,AMQP,STOMP,HORNETQ,MQTT,OPENWIRE;useEpoll=true;amqpCredits=1000;amqpLowCredits=300"
@@ -63,3 +68,22 @@ artemis_log_file: "${artemis.instance}/log/artemis.log"
 
 jolokia_cors:
   - "*://localhost*"
+
+artemis_cluster_user: "cluster-admin"
+artemis_cluster_password: "password-admin"
+artemis_broadcast_group: "bg-group1"
+artemis_group_address: "231.7.7.7"
+artemis_group_port: 9876
+artemis_connector_ref: "artemis"
+artemis_discovery_group: "dg-group1"
+artemis_cluster_connection: "artemis-cluster"
+artemis_server_type: "master"
+artemis_replicated: "replication"
+artemis_ha_policy: "<{{ artemis_replicated }}><{{ artemis_server_type }}/></{{ artemis_replicated }}>"
+
+artemis_jgroups_file: "jgroups.xml"
+artemis_jgroups_channel: "activemq_broadcast_channel"
+
+
+
+

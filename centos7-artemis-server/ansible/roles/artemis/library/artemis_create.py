@@ -44,11 +44,7 @@ EXAMPLES = '''
 '''
 
 
-"""
-TODO: Had to add java options with -XX:ParallelGCThreads to set the number of threads used during parallel phases of the garbarge collectors.
-The broker creation fails otherwise.
-"""
-CREATE_BROKER_COMMAND = "{0}/bin/artemis create {1}/{2} --user {3} --password {4} --allow-anonymous --java-options -XX:ParallelGCThreads=20"
+CREATE_BROKER_COMMAND = "{0}/bin/artemis create {1}/{2} --user {3} --password {4} --allow-anonymous"
 
 
 def create_broker(artemis_home, ansible_module, name, path, user, password):
