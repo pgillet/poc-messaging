@@ -33,6 +33,7 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.apache.activemq.artemis.utils.TokenBucketLimiter;
@@ -160,7 +161,7 @@ public abstract class PerfBase {
       } else if (perfParams.isAMQP()) {
          factory = new JmsConnectionFactory(perfParams.getUri());
 
-         destination = new org.apache.activemq.artemis.jms.client.ActiveMQQueue(perfParams.getDestinationName());
+         // destination = new org.apache.activemq.artemis.jms.client.ActiveMQQueue(perfParams.getDestinationName());
 
          connection = factory.createConnection();
 
@@ -185,7 +186,12 @@ public abstract class PerfBase {
          init();
 
          if (perfParams.isDrainQueue()) {
-            drainQueue();
+            try {
+               drainQueue();
+            } catch (Exception e) {
+               // Ignore: RabbitMQ throws an error when the queue is empty after draining it
+               // PerfBase.log.log(Level.SEVERE, e.getMessage(), e);
+            }
          }
 
          start = System.currentTimeMillis();
@@ -221,7 +227,12 @@ public abstract class PerfBase {
          init();
 
          if (perfParams.isDrainQueue()) {
-            drainQueue();
+            try {
+               drainQueue();
+            } catch (Exception e) {
+               // Ignore: RabbitMQ throws an error when the queue is empty after draining it
+               // PerfBase.log.log(Level.SEVERE, e.getMessage(), e);
+            }
          }
 
          MessageConsumer consumer = session.createConsumer(destination);
@@ -261,27 +272,28 @@ public abstract class PerfBase {
 
       Session drainSession = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
-      MessageConsumer consumer = drainSession.createConsumer(destination);
-
-      connection.start();
-
-      Message message = null;
-
       int count = 0;
-      do {
-         message = consumer.receive(3000);
+      try {
+         MessageConsumer consumer = drainSession.createConsumer(destination);
 
-         if (message != null) {
-            message.acknowledge();
+         connection.start();
 
-            count++;
-         }
+         Message message = null;
+
+         do {
+            message = consumer.receive(3000);
+
+            if (message != null) {
+               message.acknowledge();
+
+               count++;
+            }
+         } while (message != null);
+      } finally {
+         drainSession.close();
+
+         PerfBase.log.info("Drained " + count + " messages");
       }
-      while (message != null);
-
-      drainSession.close();
-
-      PerfBase.log.info("Drained " + count + " messages");
    }
 
    private void sendMessages(final int numberOfMessages,
