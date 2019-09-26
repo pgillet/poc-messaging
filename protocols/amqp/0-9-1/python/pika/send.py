@@ -2,15 +2,10 @@
 import pika
 import sys
 
-
-if len(sys.argv) != 5:
-    print("Usage: python {} host username password virtual_host".format(sys.argv[0]))
-    sys.exit(0)
-
-host = sys.argv[1]
-username = sys.argv[2]
-password = sys.argv[3]
-virtual_host = sys.argv[4]
+try:
+    host, username, password, virtual_host = sys.argv[1:5]
+except ValueError:
+    sys.exit("Usage: python {} host username password virtual_host".format(sys.argv[0]))
 
 credentials = pika.credentials.PlainCredentials(username, password)
 
