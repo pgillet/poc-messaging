@@ -151,8 +151,8 @@ LimitNOFILE=64000
 EOM
 
 # Enable plugins
-#echo "[rabbitmq_management,rabbitmq_mqtt,rabbitmq_peer_discovery_consul]." | sudo tee /etc/rabbitmq/enabled_plugins
-echo "[rabbitmq_management,rabbitmq_mqtt,rabbitmq_peer_discovery_consul]." > /etc/rabbitmq/enabled_plugins
+#echo "[rabbitmq_management,rabbitmq_amqp1_0,rabbitmq_mqtt,rabbitmq_peer_discovery_consul]." | sudo tee /etc/rabbitmq/enabled_plugins
+echo "[rabbitmq_management,rabbitmq_amqp1_0,rabbitmq_mqtt,rabbitmq_peer_discovery_consul]." > /etc/rabbitmq/enabled_plugins
 
 # Clustering - Peer discovery using Consul
 cat <<EOM > /etc/rabbitmq/rabbitmq.conf
