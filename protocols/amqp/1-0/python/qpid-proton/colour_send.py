@@ -24,6 +24,8 @@ from proton import Message
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
 
+import env
+
 class Send(MessagingHandler):
     def __init__(self, url, messages):
         super(Send, self).__init__()
@@ -42,6 +44,8 @@ class Send(MessagingHandler):
             else:
                 colour = 'green'
             content = '%s %d' % (colour, self.sent+1)
+            # Many brokers offer the ability to consume messages based on a ‘selector’ that defines which messages are
+            # of interest based on particular values of the headers. The following example shows how that can be achieved:
             msg = Message(id=(self.sent+1), properties={'colour':colour}, body=content)
             event.sender.send(msg)
             self.sent += 1
@@ -57,7 +61,7 @@ class Send(MessagingHandler):
 
 parser = optparse.OptionParser(usage="usage: %prog [options]",
                                description="Send messages to the supplied address.")
-parser.add_option("-a", "--address", default="localhost:5672/examples",
+parser.add_option("-a", "--address", default=env.server_addr,
                   help="address to which messages are sent (default %default)")
 parser.add_option("-m", "--messages", type="int", default=100,
                   help="number of messages to send (default %default)")

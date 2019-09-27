@@ -1,3 +1,25 @@
+AMQP 1.0 Model Overview
+
+Messages are transferred between connected peers over ‘links’. At the sending peer the link is called a sender.
+At the receiving peer it is called a receiver. Messages are sent by senders and received by receivers.
+Links may have named ‘source’ and ‘target’ addresses (for example to identify the queue from which message were to be
+received or to which they were to be sent).
+
+Links are established over sessions. Sessions are established over connections. Connections are (generally) established
+between two uniquely identified containers. Though a connection can have multiple sessions, often this is not needed.
+The container API allows you to ignore sessions unless you actually require them.
+
+The sending of a message over a link is called a delivery. The message is the content sent, including all meta-data such
+as headers and annotations. The delivery is the protocol exchange associated with the transfer of that content.
+
+To indicate that a delivery is complete, either the sender or the receiver ‘settles’ it. When the other side learns that
+it has been settled, they will no longer communicate about that delivery. The receiver can also indicate whether they
+accept or reject the message.
+
+Three different delivery levels or ‘guarantees’ can be achieved: at-most-once, at-least-once or exactly-once.
+
+------------------------------------------------------------------
+
 Most (though not all) of the current examples require a broker or
 similar intermediary that supports the AMQP 1.0 protocol, allows
 anonymous connections and accepts links to and from a node named

@@ -22,13 +22,15 @@ from __future__ import print_function
 from proton.reactor import Container, Copy
 from proton.handlers import MessagingHandler
 
+import env
+
 class Recv(MessagingHandler):
     def __init__(self):
         super(Recv, self).__init__()
 
     def on_start(self, event):
-        conn = event.container.connect("localhost:5672")
-        event.container.create_receiver(conn, "examples", options=Copy())
+        # conn = event.container.connect("localhost:5672")
+        event.container.create_receiver(env.server_addr, options=Copy())
 
     def on_message(self, event):
         print(event.message)

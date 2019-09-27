@@ -23,6 +23,8 @@ import optparse
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
 
+import env
+
 class Recv(MessagingHandler):
     def __init__(self, url, count):
         super(Recv, self).__init__()
@@ -45,7 +47,7 @@ class Recv(MessagingHandler):
                 event.connection.close()
 
 parser = optparse.OptionParser(usage="usage: %prog [options]")
-parser.add_option("-a", "--address", default="localhost:5672/examples",
+parser.add_option("-a", "--address", default=env.server_addr,
                   help="address from which messages are received (default %default)")
 parser.add_option("-m", "--messages", type="int", default=100,
                   help="number of messages to receive; 0 receives indefinitely (default %default)")

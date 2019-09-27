@@ -24,6 +24,8 @@ from proton import Message
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
 
+import env
+
 class Send(MessagingHandler):
     def __init__(self, url, messages):
         super(Send, self).__init__()
@@ -52,7 +54,7 @@ class Send(MessagingHandler):
 
 parser = optparse.OptionParser(usage="usage: %prog [options]",
                                description="Send messages to the supplied address.")
-parser.add_option("-a", "--address", default="localhost:5672/examples",
+parser.add_option("-a", "--address", default=env.server_addr,
                   help="address to which messages are sent (default %default)")
 parser.add_option("-m", "--messages", type="int", default=100,
                   help="number of messages to send (default %default)")

@@ -24,6 +24,8 @@ from proton import Message, Url
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
 
+import env
+
 class Server(MessagingHandler):
     def __init__(self, url, address):
         super(Server, self).__init__()
@@ -35,7 +37,7 @@ class Server(MessagingHandler):
         self.container = event.container
         self.conn = event.container.connect(self.url)
         self.receiver = event.container.create_receiver(self.conn, self.address)
-        self.server = self.container.create_sender(self.conn, None)
+        self.server = self.container.create_sender(self.conn, self.address)
 
     def on_message(self, event):
         print("Received", event.message)
@@ -43,7 +45,7 @@ class Server(MessagingHandler):
                             correlation_id=event.message.correlation_id))
 
 parser = optparse.OptionParser(usage="usage: %prog [options]")
-parser.add_option("-a", "--address", default="localhost:5672/examples",
+parser.add_option("-a", "--address", default=env.server_addr,
                   help="address from which messages are received (default %default)")
 opts, args = parser.parse_args()
 

@@ -23,13 +23,15 @@ from proton import Message
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
 
+import env
+
 class HelloWorld(MessagingHandler):
     def __init__(self, address):
         super(HelloWorld, self).__init__()
         self.address = address
 
     def on_start(self, event):
-        conn = event.container.connect()
+        conn = event.container.connect(env.server_addr)
         event.container.create_receiver(conn, self.address)
         event.container.create_sender(conn, self.address)
 
