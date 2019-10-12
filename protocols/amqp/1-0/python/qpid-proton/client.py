@@ -35,7 +35,7 @@ class Client(MessagingHandler):
     def on_start(self, event):
         self.sender = event.container.create_sender(self.url)
         # As well as sending requests, we need to be able to get back the responses. We create a receiver for that.
-        # With Artemis, we do not nned to specify an address, and we can set the dynamic option which tells the broker
+        # With Artemis, we do not need to specify an address, and we can set the dynamic option which tells the broker
         # we are connected to create a temporary address over which we can receive our responses.
         # But RabbitMQ does not support dynamic sources, and we end up using the same address (the same queue) for
         # requests and responses
