@@ -242,11 +242,13 @@ public abstract class PerfBase {
          PerfBase.log.info("READY!!!");
 
          CountDownLatch countDownLatch = new CountDownLatch(1);
-         consumer.setMessageListener(new PerfListener(countDownLatch, perfParams));
+         PerfListener listener = new PerfListener(countDownLatch, perfParams);
+         consumer.setMessageListener(listener);
          countDownLatch.await();
          long end = System.currentTimeMillis();
          // start was set on the first received message
          displayAverage(perfParams.getNoOfMessagesToSend(), start, end);
+         listener.displayAverageLatency();
       } catch (Exception e) {
          e.printStackTrace();
       } finally {
@@ -362,6 +364,8 @@ public abstract class PerfBase {
 
       private final AtomicLong count = new AtomicLong(0);
 
+      private final AtomicLong sumOfLatencies = new AtomicLong(0);
+
       private PerfListener(final CountDownLatch countDownLatch, final PerfParams perfParams) {
          this.countDownLatch = countDownLatch;
          this.perfParams = perfParams;
@@ -372,6 +376,11 @@ public abstract class PerfBase {
       @Override
       public void onMessage(final Message message) {
          try {
+            // Time taken for a sent message to be received
+            if (!perfParams.isDisableTimestamp()) {
+               sumOfLatencies.addAndGet(System.currentTimeMillis() - message.getJMSTimestamp());
+            }
+
             if (warmingUp) {
                boolean committed = checkCommit();
                if (count.incrementAndGet() == perfParams.getNoOfWarmupMessages()) {
@@ -399,12 +408,21 @@ public abstract class PerfBase {
                }
                countDownLatch.countDown();
             }
+
             if (currentCount % modulo == 0) {
                double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
                PerfBase.log.info(String.format("received %6d messages in %2.2fs", currentCount, duration));
+               displayAverageLatency();
             }
          } catch (Exception e) {
             e.printStackTrace();
+         }
+      }
+
+      public void displayAverageLatency() {
+         if (!perfParams.isDisableTimestamp()) {
+            double avgLatency = (1.0 * sumOfLatencies.get()) / (count.get() * 1000);
+            PerfBase.log.info(String.format("Average time taken for a sent message to be received is %2.2fs", avgLatency));
          }
       }
 
