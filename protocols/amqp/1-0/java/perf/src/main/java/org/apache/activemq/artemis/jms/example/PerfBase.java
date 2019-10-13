@@ -356,7 +356,7 @@ public abstract class PerfBase {
         Producer(Connection connection, boolean warmingUp) throws JMSException {
             this.connection = connection != null ? connection : factory.createConnection();
             this.warmingUp = warmingUp;
-            session = connection.createSession(perfParams.isSessionTransacted(), perfParams.isDupsOK() ? Session.DUPS_OK_ACKNOWLEDGE : Session.AUTO_ACKNOWLEDGE);
+            session = this.connection.createSession(perfParams.isSessionTransacted(), perfParams.isDupsOK() ? Session.DUPS_OK_ACKNOWLEDGE : Session.AUTO_ACKNOWLEDGE);
         }
 
         public void run() {
