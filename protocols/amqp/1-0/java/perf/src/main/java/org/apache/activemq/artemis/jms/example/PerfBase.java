@@ -301,6 +301,7 @@ public abstract class PerfBase {
             pool = Executors.newFixedThreadPool(poolSize);
         }
 
+        @Override
         public void run() { // run the service
             try {
                 for (int i=0; i<numProducers; i++) {
@@ -323,6 +324,7 @@ public abstract class PerfBase {
             pool = Executors.newFixedThreadPool(poolSize);
         }
 
+        @Override
         public void run() { // run the service
             try {
                 for (int i=0; i<numConsumers; i++) {
@@ -359,6 +361,7 @@ public abstract class PerfBase {
             session = this.connection.createSession(perfParams.isSessionTransacted(), perfParams.isDupsOK() ? Session.DUPS_OK_ACKNOWLEDGE : Session.AUTO_ACKNOWLEDGE);
         }
 
+        @Override
         public void run() {
             try {
                 start = System.currentTimeMillis();
