@@ -28,10 +28,11 @@ import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 import java.util.Random;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -89,6 +90,10 @@ public abstract class PerfBase {
       String destinationName = props.getProperty("destination-name");
       int throttleRate = Integer.valueOf(props.getProperty("throttle-rate"));
       boolean dupsOK = Boolean.valueOf(props.getProperty("dups-ok-acknowledge"));
+      int numPriorities = Integer.valueOf(props.getProperty("num-priorities"));
+      int numProducers = Integer.valueOf(props.getProperty("num-producers"));
+      int numConsumers = Integer.valueOf(props.getProperty("num-consumers"));
+      boolean reuseConnection = Boolean.valueOf(props.getProperty("reuse-connection"));
       boolean disableMessageID = Boolean.valueOf(props.getProperty("disable-message-id"));
       boolean disableTimestamp = Boolean.valueOf(props.getProperty("disable-message-timestamp"));
       String clientLibrary = props.getProperty("client-library", "core");
@@ -106,6 +111,10 @@ public abstract class PerfBase {
       PerfBase.log.info("disable-message-id: " + disableMessageID);
       PerfBase.log.info("disable-message-timestamp: " + disableTimestamp);
       PerfBase.log.info("dups-ok-acknowledge: " + dupsOK);
+      PerfBase.log.info("num-priorities: " + numPriorities);
+      PerfBase.log.info("num-producers: " + numProducers);
+      PerfBase.log.info("num-consumers: " + numConsumers);
+       PerfBase.log.info("reuse-connection: " + reuseConnection);
       PerfBase.log.info("server-uri: " + uri);
       PerfBase.log.info("client-library:" + clientLibrary);
 
@@ -122,6 +131,10 @@ public abstract class PerfBase {
       perfParams.setDisableMessageID(disableMessageID);
       perfParams.setDisableTimestamp(disableTimestamp);
       perfParams.setDupsOK(dupsOK);
+      perfParams.setNumPriorities(numPriorities);
+      perfParams.setNumProducers(numProducers);
+      perfParams.setNumConsumers(numConsumers);
+      perfParams.setReuseConnection(reuseConnection);
       perfParams.setLibraryType(clientLibrary);
       perfParams.setUri(uri);
 
@@ -134,15 +147,15 @@ public abstract class PerfBase {
       this.perfParams = perfParams;
    }
 
-   private ConnectionFactory factory;
+    private ConnectionFactory factory;
 
    private Connection connection;
-
-   private Session session;
 
    private Destination destination;
 
    private long start;
+
+   private Random rand = new Random();
 
    private void init() throws Exception {
       if (perfParams.isOpenwire()) {
@@ -172,7 +185,6 @@ public abstract class PerfBase {
          sessionX.close();
       }
 
-      session = connection.createSession(perfParams.isSessionTransacted(), perfParams.isDupsOK() ? Session.DUPS_OK_ACKNOWLEDGE : Session.AUTO_ACKNOWLEDGE);
    }
 
    private void displayAverage(final long numberOfMessages, final long start, final long end) {
@@ -194,24 +206,18 @@ public abstract class PerfBase {
             }
          }
 
-         start = System.currentTimeMillis();
          PerfBase.log.info("warming up by sending " + perfParams.getNoOfWarmupMessages() + " messages");
-         sendMessages(perfParams.getNoOfWarmupMessages(), perfParams.getBatchSize(), perfParams.isDurable(), perfParams.isSessionTransacted(), false, perfParams.getThrottleRate(), perfParams.getMessageSize());
+         new Producer(perfParams.isReuseConnection() ? connection : null, true).run();
          PerfBase.log.info("warmed up");
-         start = System.currentTimeMillis();
-         sendMessages(perfParams.getNoOfMessagesToSend(), perfParams.getBatchSize(), perfParams.isDurable(), perfParams.isSessionTransacted(), true, perfParams.getThrottleRate(), perfParams.getMessageSize());
-         long end = System.currentTimeMillis();
-         displayAverage(perfParams.getNoOfMessagesToSend(), start, end);
+
+         ProducerService svc = new ProducerService(perfParams.getNumProducers(), perfParams.getNumProducers());
+         svc.run();
+
+         awaitTerminationAfterShutdown(svc.pool);
+
       } catch (Exception e) {
          e.printStackTrace();
       } finally {
-         if (session != null) {
-            try {
-               session.close();
-            } catch (Exception e) {
-               e.printStackTrace();
-            }
-         }
          if (connection != null) {
             try {
                connection.close();
@@ -235,30 +241,17 @@ public abstract class PerfBase {
             }
          }
 
-         MessageConsumer consumer = session.createConsumer(destination);
-
          connection.start();
-
          PerfBase.log.info("READY!!!");
 
-         CountDownLatch countDownLatch = new CountDownLatch(1);
-         PerfListener listener = new PerfListener(countDownLatch, perfParams);
-         consumer.setMessageListener(listener);
-         countDownLatch.await();
-         long end = System.currentTimeMillis();
-         // start was set on the first received message
-         displayAverage(perfParams.getNoOfMessagesToSend(), start, end);
-         listener.displayAverageLatency();
+         ConsumerService svc = new ConsumerService(perfParams.getNumConsumers(), perfParams.getNumConsumers());
+         svc.run();
+
+         awaitTerminationAfterShutdown(svc.pool);
+
       } catch (Exception e) {
          e.printStackTrace();
       } finally {
-         if (session != null) {
-            try {
-               session.close();
-            } catch (Exception e) {
-               e.printStackTrace();
-            }
-         }
          if (connection != null) {
             try {
                connection.close();
@@ -298,59 +291,217 @@ public abstract class PerfBase {
       }
    }
 
-   private void sendMessages(final int numberOfMessages,
-                             final int txBatchSize,
-                             final boolean durable,
-                             final boolean transacted,
-                             final boolean display,
-                             final int throttleRate,
-                             final int messageSize) throws Exception {
-      MessageProducer producer = session.createProducer(destination);
+    class ProducerService implements Runnable {
+        private final ExecutorService pool;
+        private final int numProducers;
 
-      producer.setDeliveryMode(perfParams.isDurable() ? DeliveryMode.PERSISTENT : DeliveryMode.NON_PERSISTENT);
+        public ProducerService(int numProducers, int poolSize)
+                throws IOException {
+            this.numProducers = numProducers;
+            pool = Executors.newFixedThreadPool(poolSize);
+        }
 
-      producer.setDisableMessageID(perfParams.isDisableMessageID());
-
-      producer.setDisableMessageTimestamp(perfParams.isDisableTimestamp());
-
-      BytesMessage message = session.createBytesMessage();
-
-      byte[] payload = PerfBase.randomByteArray(messageSize);
-
-      message.writeBytes(payload);
-
-      final int modulo = 2000;
-
-      TokenBucketLimiter tbl = throttleRate != -1 ? new TokenBucketLimiterImpl(throttleRate, false) : null;
-
-      boolean committed = false;
-      for (int i = 1; i <= numberOfMessages; i++) {
-         producer.send(message);
-
-         if (transacted) {
-            if (i % txBatchSize == 0) {
-               session.commit();
-               committed = true;
-            } else {
-               committed = false;
+        public void run() { // run the service
+            try {
+                for (int i=0; i<numProducers; i++) {
+                    pool.execute(new Producer(perfParams.isReuseConnection() ? connection : null,false));
+                }
+            } catch (JMSException e) {
+                e.printStackTrace();
+                pool.shutdown();
             }
-         }
+        }
+    }
 
-         if (display && i % modulo == 0) {
-            double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
-            PerfBase.log.info(String.format("sent %6d messages in %2.2fs", i, duration));
-         }
+    class ConsumerService implements Runnable {
+        private final ExecutorService pool;
+        private final int numConsumers;
 
-         if (tbl != null) {
-            tbl.limit();
-         }
-      }
-      if (transacted && !committed) {
-         session.commit();
-      }
-   }
+        public ConsumerService(int numConsumers, int poolSize)
+                throws IOException {
+            this.numConsumers = numConsumers;
+            pool = Executors.newFixedThreadPool(poolSize);
+        }
+
+        public void run() { // run the service
+            try {
+                for (int i=0; i<numConsumers; i++) {
+                    pool.execute(new Consumer(perfParams.isReuseConnection() ? connection : null));
+                }
+            } catch (JMSException e) {
+                e.printStackTrace();
+                pool.shutdown();
+            }
+        }
+    }
+
+    public void awaitTerminationAfterShutdown(ExecutorService threadPool) {
+        threadPool.shutdown();
+        try {
+            if (!threadPool.awaitTermination(600, TimeUnit.SECONDS)) {
+                threadPool.shutdownNow();
+            }
+        } catch (InterruptedException ex) {
+            threadPool.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    class Producer implements Runnable {
+
+        private boolean warmingUp;
+        private Connection connection;
+        private Session session;
+
+        Producer(Connection connection, boolean warmingUp) throws JMSException {
+            this.connection = connection != null ? connection : factory.createConnection();
+            this.warmingUp = warmingUp;
+            session = connection.createSession(perfParams.isSessionTransacted(), perfParams.isDupsOK() ? Session.DUPS_OK_ACKNOWLEDGE : Session.AUTO_ACKNOWLEDGE);
+        }
+
+        public void run() {
+            try {
+                start = System.currentTimeMillis();
+                sendMessages(warmingUp ? perfParams.getNoOfWarmupMessages() : perfParams.getNoOfMessagesToSend(),
+                        perfParams.getBatchSize(),
+                        perfParams.isDurable(),
+                        perfParams.isSessionTransacted(), !warmingUp, perfParams.getThrottleRate(), perfParams.getMessageSize());
+                long end = System.currentTimeMillis();
+                displayAverage(warmingUp ? perfParams.getNoOfWarmupMessages() : perfParams.getNoOfMessagesToSend(), start, end);
+            } catch (InterruptedException e) {
+                PerfBase.log.log(Level.SEVERE, e.getMessage(), e);
+                Thread.currentThread().interrupt();
+            } catch (Exception e) {
+                PerfBase.log.log(Level.SEVERE, e.getMessage(), e);
+            } finally {
+                if (session != null) {
+                    try {
+                        session.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                /*if (connection != null) {
+                    try {
+                        connection.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }*/
+            }
+        }
+
+        private void sendMessages(final int numberOfMessages,
+                                  final int txBatchSize,
+                                  final boolean durable,
+                                  final boolean transacted,
+                                  final boolean display,
+                                  final int throttleRate,
+                                  final int messageSize) throws Exception {
+            MessageProducer producer = session.createProducer(destination);
+
+            producer.setDeliveryMode(perfParams.isDurable() ? DeliveryMode.PERSISTENT : DeliveryMode.NON_PERSISTENT);
+
+            producer.setDisableMessageID(perfParams.isDisableMessageID());
+
+            producer.setDisableMessageTimestamp(perfParams.isDisableTimestamp());
+
+            if (perfParams.getNumPriorities() > 0){
+                int priority = rand.nextInt(perfParams.getNumPriorities());
+                producer.setPriority(priority);
+            }
+
+            BytesMessage message = session.createBytesMessage();
+
+            byte[] payload = PerfBase.randomByteArray(messageSize);
+
+            message.writeBytes(payload);
+
+            final int modulo = 2000;
+
+            TokenBucketLimiter tbl = throttleRate != -1 ? new TokenBucketLimiterImpl(throttleRate, false) : null;
+
+            boolean committed = false;
+            for (int i = 1; i <= numberOfMessages; i++) {
+                producer.send(message);
+
+                if (transacted) {
+                    if (i % txBatchSize == 0) {
+                        session.commit();
+                        committed = true;
+                    } else {
+                        committed = false;
+                    }
+                }
+
+                if (display && i % modulo == 0) {
+                    double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
+                    PerfBase.log.info(String.format("sent %6d messages in %2.2fs", i, duration));
+                }
+
+                if (tbl != null) {
+                    tbl.limit();
+                }
+            }
+            if (transacted && !committed) {
+                session.commit();
+            }
+        }
+    }
+
+    class Consumer implements Runnable {
+
+        private Session session;
+        private Connection connection;
+
+        Consumer(Connection connection) throws JMSException {
+            this.connection = connection != null ? connection : factory.createConnection();
+            session = this.connection.createSession(perfParams.isSessionTransacted(), perfParams.isDupsOK() ? Session.DUPS_OK_ACKNOWLEDGE : Session.AUTO_ACKNOWLEDGE);
+        }
+
+        @Override
+        public void run() {
+            try {
+                start = System.currentTimeMillis();
+                MessageConsumer consumer = session.createConsumer(destination);
+
+                connection.start();
+
+                CountDownLatch countDownLatch = new CountDownLatch(1);
+                PerfListener listener = new PerfListener(session, countDownLatch, perfParams);
+                consumer.setMessageListener(listener);
+                countDownLatch.await();
+                long end = System.currentTimeMillis();
+                // start was set on the first received message
+                displayAverage(perfParams.getNoOfMessagesToSend(), start, end);
+                listener.displayAverageLatency();
+            } catch (InterruptedException e) {
+                PerfBase.log.log(Level.SEVERE, e.getMessage(), e);
+                Thread.currentThread().interrupt();
+            } catch(Exception e) {
+                PerfBase.log.log(Level.SEVERE, e.getMessage(), e);
+            } finally {
+                if (session != null) {
+                    try {
+                        session.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                /*if (connection != null) {
+                    try {
+                        connection.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }*/
+            }
+        }
+    }
 
    private class PerfListener implements MessageListener {
+
+       private final Session session;
 
       private final CountDownLatch countDownLatch;
 
@@ -366,7 +517,8 @@ public abstract class PerfBase {
 
       private final AtomicLong sumOfLatencies = new AtomicLong(0);
 
-      private PerfListener(final CountDownLatch countDownLatch, final PerfParams perfParams) {
+      private PerfListener(final Session session, final CountDownLatch countDownLatch, final PerfParams perfParams) {
+          this.session = session;
          this.countDownLatch = countDownLatch;
          this.perfParams = perfParams;
          warmingUp = perfParams.getNoOfWarmupMessages() > 0;
@@ -401,19 +553,24 @@ public abstract class PerfBase {
             }
 
             long currentCount = count.incrementAndGet();
-            boolean committed = checkCommit();
-            if (currentCount == perfParams.getNoOfMessagesToSend()) {
-               if (!committed) {
-                  checkCommit();
-               }
-               countDownLatch.countDown();
-            }
+            // System.out.println("Priority = " + message.getJMSPriority());
+
+            // TODO
+            // System.out.println(currentCount);
 
             if (currentCount % modulo == 0) {
                double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
                PerfBase.log.info(String.format("received %6d messages in %2.2fs", currentCount, duration));
                displayAverageLatency();
             }
+
+             boolean committed = checkCommit();
+             if (currentCount == perfParams.getNoOfMessagesToSend()) {
+                 if (!committed) {
+                     checkCommit();
+                 }
+                 countDownLatch.countDown();
+             }
          } catch (Exception e) {
             e.printStackTrace();
          }

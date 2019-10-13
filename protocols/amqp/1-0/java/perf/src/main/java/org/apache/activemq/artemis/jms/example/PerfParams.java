@@ -55,7 +55,15 @@ public class PerfParams implements Serializable {
 
    private boolean dupsOK;
 
+   private int numPriorities;
+
    private String uri;
+
+   private int numProducers;
+
+   private int numConsumers;
+
+   private boolean reuseConnection;
 
    public String getUri() {
       return uri;
@@ -161,6 +169,14 @@ public class PerfParams implements Serializable {
       this.dupsOK = dupsOK;
    }
 
+   public int getNumPriorities() {
+      return numPriorities;
+   }
+
+   public void setNumPriorities(int numPriorities) {
+      this.numPriorities = numPriorities;
+   }
+
    public boolean isOpenwire() {
       return libraryType.equals(ClientLibraryType.openwire);
    }
@@ -185,4 +201,27 @@ public class PerfParams implements Serializable {
       this.libraryType = ClientLibraryType.valueOf(libraryType);
    }
 
+   public int getNumProducers() {
+      return numProducers;
+   }
+
+   public void setNumProducers(int numProducers) {
+      this.numProducers = numProducers;
+   }
+
+   public int getNumConsumers() {
+      return numConsumers;
+   }
+
+   public void setNumConsumers(int numConsumers) {
+      this.numConsumers = numConsumers;
+   }
+
+   public boolean isReuseConnection() {
+      return reuseConnection;
+   }
+
+   public void setReuseConnection(boolean reuseConnection) {
+      this.reuseConnection = reuseConnection;
+   }
 }
