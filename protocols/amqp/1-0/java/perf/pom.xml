@@ -120,26 +120,26 @@ under the License.
          <build>
             <plugins>
                <plugin>
-                  <groupId>org.apache.activemq</groupId>
-                  <artifactId>artemis-maven-plugin</artifactId>
+                  <groupId>org.codehaus.mojo</groupId>
+                  <artifactId>exec-maven-plugin</artifactId>
+                  <version>1.6.0</version>
                   <executions>
                      <execution>
-                        <id>runClient</id>
                         <goals>
-                           <goal>runClient</goal>
+                           <goal>exec</goal>
                         </goals>
-                        <configuration>
-                           <clientClass>org.apache.activemq.artemis.jms.example.PerfListener</clientClass>
-                        </configuration>
                      </execution>
                   </executions>
-                  <dependencies>
-                     <dependency>
-                        <groupId>org.apache.activemq.examples.soak</groupId>
-                        <artifactId>openwire-perf</artifactId>
-                        <version>${project.version}</version>
-                     </dependency>
-                  </dependencies>
+                  <configuration>
+                     <executable>java</executable>
+                     <arguments>
+                        <argument>-classpath</argument>
+                        <!-- automatically creates the classpath using all project dependencies,
+                                              also adding the project build directory -->
+                        <classpath/>
+                        <argument>org.apache.activemq.artemis.jms.example.PerfListener</argument>
+                     </arguments>
+                  </configuration>
                </plugin>
             </plugins>
          </build>
@@ -149,26 +149,26 @@ under the License.
          <build>
             <plugins>
                <plugin>
-                  <groupId>org.apache.activemq</groupId>
-                  <artifactId>artemis-maven-plugin</artifactId>
+                  <groupId>org.codehaus.mojo</groupId>
+                  <artifactId>exec-maven-plugin</artifactId>
+                  <version>1.6.0</version>
                   <executions>
                      <execution>
-                        <id>runClient</id>
                         <goals>
-                           <goal>runClient</goal>
+                           <goal>exec</goal>
                         </goals>
-                        <configuration>
-                           <clientClass>org.apache.activemq.artemis.jms.example.PerfSender</clientClass>
-                        </configuration>
                      </execution>
                   </executions>
-                  <dependencies>
-                     <dependency>
-                        <groupId>org.apache.activemq.examples.soak</groupId>
-                        <artifactId>openwire-perf</artifactId>
-                        <version>${project.version}</version>
-                     </dependency>
-                  </dependencies>
+                  <configuration>
+                     <executable>java</executable>
+                     <arguments>
+                        <argument>-classpath</argument>
+                        <!-- automatically creates the classpath using all project dependencies,
+                                              also adding the project build directory -->
+                        <classpath/>
+                        <argument>org.apache.activemq.artemis.jms.example.PerfSender</argument>
+                     </arguments>
+                  </configuration>
                </plugin>
             </plugins>
          </build>
