@@ -79,6 +79,6 @@ ssl_options.fail_if_no_peer_cert = false
 
 Check that the files have the appropriate read permission.
 
-See (TLS Support)[https://www.rabbitmq.com/ssl.html] and (Troubleshooting TLS-enabled Connections)[https://www.rabbitmq.com/troubleshooting-ssl.html] for more information.
+See [TLS Support](https://www.rabbitmq.com/ssl.html) and [Troubleshooting TLS-enabled Connections](https://www.rabbitmq.com/troubleshooting-ssl.html) for more information.
 
-See an example of the needed configuration on the client side in the [perf][https://git.meteo.fr/poc_amqp/poc_amqp/tree/master/protocols/amqp/1-0/java/perf] project.
+See an example of the needed configuration on the client side in the [perf](https://git.meteo.fr/poc_amqp/poc_amqp/tree/master/protocols/amqp/1-0/java/perf) project.
