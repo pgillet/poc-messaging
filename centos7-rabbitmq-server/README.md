@@ -30,6 +30,8 @@ gcloud beta compute images import centos-7-rabbitmq-server \
 
 ## RabbitMQ post-installation steps
 
+### Create a user
+
 ```
 # Access control
 # Create a RabbitMQ user called "meteofr"
@@ -49,3 +51,34 @@ rabbitmqctl set_user_tags meteofr administrator
 # Delete the defaut guest user as a primary security measure
 rabbitmqctl delete_user guest
 ```
+
+### Enable TLS support
+
+Use `tls-gen` to generate two self-signed certificates/key pairs, one for the server and one another for clients:
+
+```
+git clone https://github.com/michaelklishin/tls-gen tls-gen
+cd tls-gen/basic
+# private key password
+make PASSWORD=bunnies
+make verify
+make info
+ls -l ./result
+```
+
+Add the following options in `rabbitmq.conf`:
+
+```
+ssl_options.cacertfile = /path/to/ca_certificate.pem
+ssl_options.certfile   = /path/to/server_certificate.pem
+ssl_options.keyfile    = /path/to/server_key.pem
+ssl_options.password   = bunnies
+ssl_options.verify     = verify_peer
+ssl_options.fail_if_no_peer_cert = false
+```
+
+Check that the files have the appropriate read permission.
+
+See (TLS Support)[https://www.rabbitmq.com/ssl.html] and (Troubleshooting TLS-enabled Connections)[https://www.rabbitmq.com/troubleshooting-ssl.html] for more information.
+
+See an example of the needed configuration on the client side in the [perf][https://git.meteo.fr/poc_amqp/poc_amqp/tree/master/protocols/amqp/1-0/java/perf] project.
