@@ -98,6 +98,10 @@ public abstract class PerfBase {
       boolean disableTimestamp = Boolean.valueOf(props.getProperty("disable-message-timestamp"));
       String clientLibrary = props.getProperty("client-library", "core");
       String uri = props.getProperty("server-uri", "tcp://localhost:61616");
+      String transportKeyStoreLocation = props.getProperty("transport-keyStoreLocation");
+      String transportKeyStorePassword = props.getProperty("transport-keyStorePassword");
+      String transportTrustStoreLocation = props.getProperty("transport-trustStoreLocation");
+      String transportTrustStorePassword = props.getProperty("transport-trustStorePassword");
 
       PerfBase.log.info("num-messages: " + noOfMessages);
       PerfBase.log.info("num-warmup-messages: " + noOfWarmupMessages);
@@ -114,8 +118,12 @@ public abstract class PerfBase {
       PerfBase.log.info("num-priorities: " + numPriorities);
       PerfBase.log.info("num-producers: " + numProducers);
       PerfBase.log.info("num-consumers: " + numConsumers);
-       PerfBase.log.info("reuse-connection: " + reuseConnection);
+      PerfBase.log.info("reuse-connection: " + reuseConnection);
       PerfBase.log.info("server-uri: " + uri);
+      PerfBase.log.info("transport-keyStoreLocation: " + transportKeyStoreLocation);
+      PerfBase.log.info("transport-keyStorePassword: " + transportKeyStorePassword);
+      PerfBase.log.info("transport-trustStoreLocation: " + transportTrustStoreLocation);
+      PerfBase.log.info("transport-trustStorePassword: " + transportTrustStorePassword);
       PerfBase.log.info("client-library:" + clientLibrary);
 
       PerfParams perfParams = new PerfParams();
@@ -137,6 +145,10 @@ public abstract class PerfBase {
       perfParams.setReuseConnection(reuseConnection);
       perfParams.setLibraryType(clientLibrary);
       perfParams.setUri(uri);
+      perfParams.setTransportKeyStoreLocation(transportKeyStoreLocation);
+      perfParams.setTransportKeyStorePassword(transportKeyStorePassword);
+      perfParams.setTransportTrustStoreLocation(transportTrustStoreLocation);
+      perfParams.setTransportTrustStorePassword(transportTrustStorePassword);
 
       return perfParams;
    }
@@ -158,6 +170,15 @@ public abstract class PerfBase {
    private Random rand = new Random();
 
    private void init() throws Exception {
+
+       // If SSL/TLS
+       if(perfParams.getUri().startsWith("amqps")) {
+           System.setProperty("javax.net.ssl.keyStore", perfParams.getTransportKeyStoreLocation());
+           System.setProperty("javax.net.ssl.keyStorePassword", perfParams.getTransportKeyStorePassword());
+           System.setProperty("javax.net.ssl.trustStore", perfParams.getTransportTrustStoreLocation());
+           System.setProperty("javax.net.ssl.trustStorePassword", perfParams.getTransportTrustStorePassword());
+       }
+
       if (perfParams.isOpenwire()) {
          factory = new org.apache.activemq.ActiveMQConnectionFactory(perfParams.getUri());
 

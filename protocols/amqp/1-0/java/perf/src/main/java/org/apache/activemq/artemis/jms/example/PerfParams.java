@@ -65,6 +65,14 @@ public class PerfParams implements Serializable {
 
    private boolean reuseConnection;
 
+   private String transportKeyStoreLocation;
+
+   private String transportKeyStorePassword;
+
+   private String transportTrustStoreLocation;
+
+   private String transportTrustStorePassword;
+
    public String getUri() {
       return uri;
    }
@@ -223,5 +231,37 @@ public class PerfParams implements Serializable {
 
    public void setReuseConnection(boolean reuseConnection) {
       this.reuseConnection = reuseConnection;
+   }
+
+   public String getTransportKeyStoreLocation() {
+      return transportKeyStoreLocation;
+   }
+
+   public void setTransportKeyStoreLocation(String transportKeyStoreLocation) {
+      this.transportKeyStoreLocation = transportKeyStoreLocation;
+   }
+
+   public String getTransportKeyStorePassword() {
+      return transportKeyStorePassword;
+   }
+
+   public void setTransportKeyStorePassword(String transportKeyStorePassword) {
+      this.transportKeyStorePassword = transportKeyStorePassword;
+   }
+
+   public String getTransportTrustStoreLocation() {
+      return transportTrustStoreLocation;
+   }
+
+   public void setTransportTrustStoreLocation(String transportTrustStoreLocation) {
+      this.transportTrustStoreLocation = transportTrustStoreLocation;
+   }
+
+   public String getTransportTrustStorePassword() {
+      return transportTrustStorePassword;
+   }
+
+   public void setTransportTrustStorePassword(String transportTrustStorePassword) {
+      this.transportTrustStorePassword = transportTrustStorePassword;
    }
 }
