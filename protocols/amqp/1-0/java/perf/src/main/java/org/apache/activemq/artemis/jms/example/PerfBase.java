@@ -98,6 +98,8 @@ public abstract class PerfBase {
       boolean disableTimestamp = Boolean.valueOf(props.getProperty("disable-message-timestamp"));
       String clientLibrary = props.getProperty("client-library", "core");
       String uri = props.getProperty("server-uri", "tcp://localhost:61616");
+      String username = props.getProperty("username");
+      String password = props.getProperty("password");
       String transportKeyStoreLocation = props.getProperty("transport-keyStoreLocation");
       String transportKeyStorePassword = props.getProperty("transport-keyStorePassword");
       String transportTrustStoreLocation = props.getProperty("transport-trustStoreLocation");
@@ -120,6 +122,7 @@ public abstract class PerfBase {
       PerfBase.log.info("num-consumers: " + numConsumers);
       PerfBase.log.info("reuse-connection: " + reuseConnection);
       PerfBase.log.info("server-uri: " + uri);
+      PerfBase.log.info("username: " + username);
       PerfBase.log.info("transport-keyStoreLocation: " + transportKeyStoreLocation);
       PerfBase.log.info("transport-keyStorePassword: " + transportKeyStorePassword);
       PerfBase.log.info("transport-trustStoreLocation: " + transportTrustStoreLocation);
@@ -145,6 +148,8 @@ public abstract class PerfBase {
       perfParams.setReuseConnection(reuseConnection);
       perfParams.setLibraryType(clientLibrary);
       perfParams.setUri(uri);
+      perfParams.setUsername(username);
+      perfParams.setPassword(password);
       perfParams.setTransportKeyStoreLocation(transportKeyStoreLocation);
       perfParams.setTransportKeyStorePassword(transportKeyStorePassword);
       perfParams.setTransportTrustStoreLocation(transportTrustStoreLocation);
@@ -193,7 +198,7 @@ public abstract class PerfBase {
          connection = factory.createConnection();
 
       } else if (perfParams.isAMQP()) {
-         factory = new JmsConnectionFactory(perfParams.getUri());
+         factory = new JmsConnectionFactory(perfParams.getUsername(), perfParams.getPassword(), perfParams.getUri());
 
          // destination = new org.apache.activemq.artemis.jms.client.ActiveMQQueue(perfParams.getDestinationName());
 
