@@ -170,8 +170,6 @@ public abstract class PerfBase {
 
    private Destination destination;
 
-   private long start;
-
    private Random rand = new Random();
 
    private void init() throws Exception {
@@ -211,12 +209,6 @@ public abstract class PerfBase {
          sessionX.close();
       }
 
-   }
-
-   private void displayAverage(final long numberOfMessages, final long start, final long end) {
-      double duration = (1.0 * end - start) / 1000; // in seconds
-      double average = 1.0 * numberOfMessages / duration;
-      PerfBase.log.info(String.format("average: %.2f msg/s (%d messages in %2.2fs)", average, numberOfMessages, duration));
    }
 
    protected void runSender() {
@@ -380,6 +372,7 @@ public abstract class PerfBase {
         private boolean warmingUp;
         private Connection connection;
         private Session session;
+        private long start;
 
         Producer(Connection connection, boolean warmingUp) throws JMSException {
             this.connection = connection != null ? connection : factory.createConnection();
@@ -391,6 +384,7 @@ public abstract class PerfBase {
         public void run() {
             try {
                 start = System.currentTimeMillis();
+                PerfBase.log.info(String.format("Producer %s has started", Thread.currentThread().getName()));
                 sendMessages(warmingUp ? perfParams.getNoOfWarmupMessages() : perfParams.getNoOfMessagesToSend(),
                         perfParams.getBatchSize(),
                         perfParams.isDurable(),
@@ -407,17 +401,23 @@ public abstract class PerfBase {
                     try {
                         session.close();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        // e.printStackTrace();
                     }
                 }
-                /*if (connection != null) {
+                if (!perfParams.isReuseConnection() && connection != null) {
                     try {
                         connection.close();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        // e.printStackTrace();
                     }
-                }*/
+                }
             }
+        }
+
+        private void displayAverage(final long numberOfMessages, final long start, final long end) {
+            double duration = (1.0 * end - start) / 1000; // in seconds
+            double average = 1.0 * numberOfMessages / duration;
+            PerfBase.log.info(String.format("average: %.2f msg/s (%d messages in %2.2fs)", average, numberOfMessages, duration));
         }
 
         private void sendMessages(final int numberOfMessages,
@@ -491,7 +491,6 @@ public abstract class PerfBase {
         @Override
         public void run() {
             try {
-                start = System.currentTimeMillis();
                 MessageConsumer consumer = session.createConsumer(destination);
 
                 connection.start();
@@ -500,10 +499,6 @@ public abstract class PerfBase {
                 PerfListener listener = new PerfListener(session, countDownLatch, perfParams);
                 consumer.setMessageListener(listener);
                 countDownLatch.await();
-                long end = System.currentTimeMillis();
-                // start was set on the first received message
-                displayAverage(perfParams.getNoOfMessagesToSend(), start, end);
-                listener.displayAverageLatency();
             } catch (InterruptedException e) {
                 PerfBase.log.log(Level.SEVERE, e.getMessage(), e);
                 Thread.currentThread().interrupt();
@@ -517,13 +512,13 @@ public abstract class PerfBase {
                         e.printStackTrace();
                     }
                 }
-                /*if (connection != null) {
+                if (!perfParams.isReuseConnection() && connection != null) {
                     try {
                         connection.close();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
-                }*/
+                }
             }
         }
     }
@@ -539,6 +534,8 @@ public abstract class PerfBase {
       private boolean warmingUp = true;
 
       private boolean started = false;
+
+      private long start;
 
       private final int modulo;
 
@@ -584,13 +581,13 @@ public abstract class PerfBase {
             long currentCount = count.incrementAndGet();
             // System.out.println("Priority = " + message.getJMSPriority());
 
-            // TODO
-            // System.out.println(currentCount);
-
-            if (currentCount % modulo == 0) {
+            if (currentCount % modulo == 0 || currentCount >= perfParams.getNoOfMessagesToSend()) {
                double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
                PerfBase.log.info(String.format("received %6d messages in %2.2fs", currentCount, duration));
-               displayAverageLatency();
+                if (!perfParams.isDisableTimestamp()) {
+                    double avgLatency = (1.0 * sumOfLatencies.get()) / (currentCount * 1000);
+                    PerfBase.log.info(String.format("Average time taken for a sent message to be received is %2.2fs", avgLatency));
+                }
             }
 
              boolean committed = checkCommit();
@@ -602,13 +599,6 @@ public abstract class PerfBase {
              }
          } catch (Exception e) {
             e.printStackTrace();
-         }
-      }
-
-      public void displayAverageLatency() {
-         if (!perfParams.isDisableTimestamp()) {
-            double avgLatency = (1.0 * sumOfLatencies.get()) / (count.get() * 1000);
-            PerfBase.log.info(String.format("Average time taken for a sent message to be received is %2.2fs", avgLatency));
          }
       }
 
