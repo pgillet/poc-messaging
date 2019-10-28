@@ -137,7 +137,7 @@ under the License.
                         <!-- automatically creates the classpath using all project dependencies,
                                               also adding the project build directory -->
                         <classpath/>
-                        <argument>org.apache.activemq.artemis.jms.example.PerfListener</argument>
+                        <argument>org.apache.activemq.artemis.jms.example.PerfReceiver</argument>
                      </arguments>
                   </configuration>
                </plugin>

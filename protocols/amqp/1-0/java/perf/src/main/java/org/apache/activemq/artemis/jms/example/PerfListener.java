@@ -1,45 +1,103 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.apache.activemq.artemis.jms.example;
 
+import javax.jms.Message;
+import javax.jms.MessageListener;
+import javax.jms.Session;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
-public class PerfListener extends PerfBase {
+class PerfListener implements MessageListener {
 
-   private static final Logger log = Logger.getLogger(PerfListener.class.getName());
+    private static final Logger log = Logger.getLogger(PerfListener.class.getName());
 
-   public static void main(final String[] args) {
-      try {
-         String fileName = PerfBase.getPerfFileName(args);
+    private PerfBase context;
+    private final Session session;
 
-         PerfParams params = PerfBase.getParams(fileName);
+    private final CountDownLatch countDownLatch;
 
-         new PerfListener(params).run();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-   }
+    private final PerfParams perfParams;
 
-   private PerfListener(final PerfParams perfParams) {
-      super(perfParams);
-   }
+    private boolean warmingUp = true;
 
-   public void run() throws Exception {
-      runListener();
-   }
+    private boolean started = false;
 
+    private long start;
+
+    private final int modulo;
+
+    private final AtomicLong count = new AtomicLong(0);
+
+    private final AtomicLong sumOfLatencies = new AtomicLong(0);
+
+    PerfListener(PerfBase context, final Session session, final CountDownLatch countDownLatch) {
+        this.context = context;
+        this.perfParams = context.perfParams;
+        this.session = session;
+        this.countDownLatch = countDownLatch;
+        warmingUp = perfParams.getNoOfWarmupMessages() > 0;
+        modulo = 2000;
+    }
+
+    @Override
+    public void onMessage(final Message message) {
+        try {
+            // Time taken for a sent message to be received
+            if (!perfParams.isDisableTimestamp()) {
+                sumOfLatencies.addAndGet(System.currentTimeMillis() - message.getJMSTimestamp());
+            }
+
+            if (warmingUp) {
+                boolean committed = checkCommit();
+                if (count.incrementAndGet() == perfParams.getNoOfWarmupMessages()) {
+                    log.info("warmed up after receiving " + count.longValue() + " msgs");
+                    if (!committed) {
+                        checkCommit();
+                    }
+                    warmingUp = false;
+                }
+                return;
+            }
+
+            if (!started) {
+                started = true;
+                // reset count to take stats
+                count.set(0);
+                start = System.currentTimeMillis();
+            }
+
+            long currentCount = count.incrementAndGet();
+            // System.out.println("Priority = " + message.getJMSPriority());
+
+            if (currentCount % modulo == 0 || currentCount >= perfParams.getNoOfMessagesToSend()) {
+                double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
+                log.info(String.format("[%s] received %6d messages in %2.2fs", Thread.currentThread().getName(), currentCount, duration));
+                if (!perfParams.isDisableTimestamp()) {
+                    double avgLatency = (1.0 * sumOfLatencies.get()) / (currentCount * 1000);
+                    log.info(String.format("[%s] Average time taken for a sent message to be received is %2.2fs", Thread.currentThread().getName(), avgLatency));
+                }
+            }
+
+            boolean committed = checkCommit();
+            if (currentCount == perfParams.getNoOfMessagesToSend()) {
+                if (!committed) {
+                    checkCommit();
+                }
+                countDownLatch.countDown();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean checkCommit() throws Exception {
+        if (perfParams.isSessionTransacted()) {
+            if (count.longValue() % perfParams.getBatchSize() == 0) {
+                session.commit();
+
+                return true;
+            }
+        }
+        return false;
+    }
 }
