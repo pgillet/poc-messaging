@@ -19,8 +19,10 @@ package org.apache.activemq.artemis.jms.example;
 import org.apache.qpid.jms.JmsConnectionFactory;
 
 import javax.jms.*;
+import javax.naming.Context;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.Hashtable;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -180,6 +182,17 @@ public abstract class PerfBase {
             destination = sessionX.createQueue(perfParams.getDestinationName());
 
             sessionX.close();
+
+            // JNDI alternative
+            /*Hashtable<Object, Object> env = new Hashtable<Object, Object>();
+            env.put(Context.INITIAL_CONTEXT_FACTORY, "org.apache.qpid.jms.jndi.JmsInitialContextFactory");
+            env.put("connectionfactory.myFactoryLookup", perfParams.getUri());
+            env.put("queue.myQueueLookup", perfParams.getDestinationName());
+            javax.naming.Context context = new javax.naming.InitialContext(env);
+
+            factory = (ConnectionFactory) context.lookup("myFactoryLookup");
+            connection = factory.createConnection();
+            destination = (Destination) context.lookup("myQueueLookup");*/
         }
 
     }
