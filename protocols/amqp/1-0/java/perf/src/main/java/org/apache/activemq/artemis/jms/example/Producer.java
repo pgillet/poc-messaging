@@ -127,7 +127,7 @@ class Producer implements Runnable {
             if (display && i % modulo == 0) {
                 double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
                 double average = 1.0 * i / duration;
-                log.info(String.format("[%s] Average: %.2f msg/s (Sent %d messages in %2.2fs)", Thread.currentThread().getName(), average, i, duration));
+                log.info(String.format("[%s] Average: %.2f msg/s (Sent %6d messages in %2.2fs)", Thread.currentThread().getName(), average, i, duration));
             }
 
             if (tbl != null) {
