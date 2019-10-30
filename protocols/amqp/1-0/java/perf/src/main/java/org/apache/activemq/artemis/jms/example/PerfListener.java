@@ -79,7 +79,8 @@ class PerfListener implements MessageListener {
 
             if (currentCount % modulo == 0 || currentCount >= awaitedNumberOfMessages) {
                 double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
-                log.info(String.format("[%s] received %6d messages in %2.2fs", Thread.currentThread().getName(), currentCount, duration));
+                double average = 1.0 * currentCount / duration;
+                log.info(String.format("[%s] Average: %.2f msg/s (Received 6%d messages in %2.2fs)", Thread.currentThread().getName(), average, currentCount, duration));
                 if (!perfParams.isDisableTimestamp()) {
                     double avgLatency = (1.0 * sumOfLatencies.get()) / (currentCount * 1000);
                     log.info(String.format("[%s] Average time taken for a sent message to be received is %2.2fs", Thread.currentThread().getName(), avgLatency));
