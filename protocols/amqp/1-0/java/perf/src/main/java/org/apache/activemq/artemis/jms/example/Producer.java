@@ -19,6 +19,7 @@ class Producer implements Runnable {
     private Session session;
     private long start;
     private Random rand = new Random();
+    private final int modulo;
 
     Producer(PerfBase context, boolean warmingUp) throws JMSException {
         this.context = context;
@@ -26,6 +27,7 @@ class Producer implements Runnable {
         this.connection = perfParams.isReuseConnection() ? context.connection : context.factory.createConnection();
         this.warmingUp = warmingUp;
         session = this.connection.createSession(perfParams.isSessionTransacted(), perfParams.isDupsOK() ? Session.DUPS_OK_ACKNOWLEDGE : Session.AUTO_ACKNOWLEDGE);
+        modulo = perfParams.getThrottleRate() != -1 ? 10 : 1000;
     }
 
     private static byte[] randomByteArray(final int length) {
@@ -48,7 +50,10 @@ class Producer implements Runnable {
             sendMessages(warmingUp ? perfParams.getNoOfWarmupMessages() : perfParams.getNoOfMessagesToSend(),
                     perfParams.getBatchSize(),
                     perfParams.isDurable(),
-                    perfParams.isSessionTransacted(), !warmingUp, perfParams.getThrottleRate(), perfParams.getMessageSize());
+                    perfParams.isSessionTransacted(),
+                    !warmingUp,
+                    warmingUp? -1: perfParams.getThrottleRate(),
+                    perfParams.getMessageSize());
             long end = System.currentTimeMillis();
             displayAverage(warmingUp ? perfParams.getNoOfWarmupMessages() : perfParams.getNoOfMessagesToSend(), start, end);
         } catch (InterruptedException e) {
@@ -100,9 +105,7 @@ class Producer implements Runnable {
             producer.setPriority(priority);
         }
 
-        final int modulo = 2000;
-
-        TokenBucketLimiter tbl = throttleRate != -1 ? new TokenBucketLimiterImpl(throttleRate, false) : null;
+        TokenBucketLimiter tbl = throttleRate != -1 ? new TokenBucketLimiterImpl(throttleRate, false, perfParams.getTimeUnit(), perfParams.getUnitAmount()) : null;
 
         boolean committed = false;
         for (int i = 1; i <= numberOfMessages; i++) {

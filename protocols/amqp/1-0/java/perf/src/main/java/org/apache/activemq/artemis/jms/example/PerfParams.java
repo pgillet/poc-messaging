@@ -17,6 +17,7 @@
 package org.apache.activemq.artemis.jms.example;
 
 import java.io.Serializable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Class that holds the parameters used in the performance examples
@@ -47,6 +48,8 @@ public class PerfParams implements Serializable {
 
     private String destinationName;
 
+    private DestinationType destinationType;
+
     private int throttleRate;
 
     private boolean disableMessageID;
@@ -76,6 +79,10 @@ public class PerfParams implements Serializable {
     private String transportTrustStoreLocation;
 
     private String transportTrustStorePassword;
+
+    private TimeUnit timeUnit;
+
+    private int unitAmount;
 
     public String getUri() {
         return uri;
@@ -141,6 +148,14 @@ public class PerfParams implements Serializable {
         this.destinationName = destinationName;
     }
 
+    public DestinationType getDestinationType() {
+        return destinationType;
+    }
+
+    public void setDestinationType(DestinationType destinationType) {
+        this.destinationType = destinationType;
+    }
+
     public synchronized boolean isDrainQueue() {
         return drainQueue;
     }
@@ -155,6 +170,22 @@ public class PerfParams implements Serializable {
 
     public synchronized void setThrottleRate(final int throttleRate) {
         this.throttleRate = throttleRate;
+    }
+
+    public TimeUnit getTimeUnit() {
+        return timeUnit;
+    }
+
+    public void setTimeUnit(TimeUnit timeUnit) {
+        this.timeUnit = timeUnit;
+    }
+
+    public int getUnitAmount() {
+        return unitAmount;
+    }
+
+    public void setUnitAmount(int unitAmount) {
+        this.unitAmount = unitAmount;
     }
 
     public synchronized boolean isDisableMessageID() {

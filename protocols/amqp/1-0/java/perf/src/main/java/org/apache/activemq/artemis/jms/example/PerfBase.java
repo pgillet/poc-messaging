@@ -73,7 +73,10 @@ public abstract class PerfBase {
         int batchSize = Integer.valueOf(props.getProperty("batch-size"));
         boolean drainQueue = Boolean.valueOf(props.getProperty("drain-queue"));
         String destinationName = props.getProperty("destination-name");
+        DestinationType destinationType = DestinationType.valueOf(props.getProperty("destination-type"));
         int throttleRate = Integer.valueOf(props.getProperty("throttle-rate"));
+        TimeUnit timeUnit = TimeUnit.valueOf(props.getProperty("time-unit"));
+        int unitAmount = Integer.valueOf(props.getProperty("unit-amount"));
         boolean dupsOK = Boolean.valueOf(props.getProperty("dups-ok-acknowledge"));
         int numPriorities = Integer.valueOf(props.getProperty("num-priorities"));
         int numProducers = Integer.valueOf(props.getProperty("num-producers"));
@@ -98,7 +101,10 @@ public abstract class PerfBase {
         PerfBase.log.info("batch-size: " + batchSize);
         PerfBase.log.info("drain-queue: " + drainQueue);
         PerfBase.log.info("throttle-rate: " + throttleRate);
+        PerfBase.log.info("time-unit: " + timeUnit);
+        PerfBase.log.info("unit-amount: " + unitAmount);
         PerfBase.log.info("destination-name: " + destinationName);
+        PerfBase.log.info("destination-type: " + destinationType);
         PerfBase.log.info("disable-message-id: " + disableMessageID);
         PerfBase.log.info("disable-message-timestamp: " + disableTimestamp);
         PerfBase.log.info("dups-ok-acknowledge: " + dupsOK);
@@ -123,7 +129,10 @@ public abstract class PerfBase {
         perfParams.setBatchSize(batchSize);
         perfParams.setDrainQueue(drainQueue);
         perfParams.setDestinationName(destinationName);
+        perfParams.setDestinationType(destinationType);
         perfParams.setThrottleRate(throttleRate);
+        perfParams.setTimeUnit(timeUnit);
+        perfParams.setUnitAmount(unitAmount);
         perfParams.setDisableMessageID(disableMessageID);
         perfParams.setDisableTimestamp(disableTimestamp);
         perfParams.setDupsOK(dupsOK);
@@ -179,7 +188,11 @@ public abstract class PerfBase {
 
             Session sessionX = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 
-            destination = sessionX.createQueue(perfParams.getDestinationName());
+            if(perfParams.getDestinationType() == DestinationType.TOPIC) {
+                destination = sessionX.createTopic(perfParams.getDestinationName());
+            } else {
+                destination = sessionX.createQueue(perfParams.getDestinationName());
+            }
 
             sessionX.close();
 
@@ -283,7 +296,7 @@ public abstract class PerfBase {
                 message = consumer.receive(3000);
 
                 if (message != null) {
-                    message.acknowledge();
+                    // message.acknowledge();
 
                     count++;
                 }
@@ -301,7 +314,7 @@ public abstract class PerfBase {
     public void awaitTerminationAfterShutdown(ExecutorService threadPool) {
         threadPool.shutdown();
         try {
-            if (!threadPool.awaitTermination(600, TimeUnit.SECONDS)) {
+            if (!threadPool.awaitTermination(24, TimeUnit.HOURS)) {
                 threadPool.shutdownNow();
             }
         } catch (InterruptedException ex) {

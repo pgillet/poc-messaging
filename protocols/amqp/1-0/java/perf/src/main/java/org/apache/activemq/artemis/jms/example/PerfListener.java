@@ -30,13 +30,21 @@ class PerfListener implements MessageListener {
 
     private final AtomicLong sumOfLatencies = new AtomicLong(0);
 
+    private int awaitedNumberOfMessages;
+
     PerfListener(PerfBase context, final Session session, final CountDownLatch countDownLatch) {
         this.context = context;
         this.perfParams = context.perfParams;
         this.session = session;
         this.countDownLatch = countDownLatch;
         warmingUp = perfParams.getNoOfWarmupMessages() > 0;
-        modulo = 2000;
+        modulo = perfParams.getThrottleRate() != -1 ? 10 : 1000;
+        if (perfParams.getDestinationType() == DestinationType.TOPIC) {
+            awaitedNumberOfMessages = perfParams.getNoOfMessagesToSend() * perfParams.getNumProducers();
+        } else {
+            // Average
+            awaitedNumberOfMessages = perfParams.getNoOfMessagesToSend() / perfParams.getNumConsumers();
+        }
     }
 
     @Override
@@ -69,7 +77,7 @@ class PerfListener implements MessageListener {
             long currentCount = count.incrementAndGet();
             // System.out.println("Priority = " + message.getJMSPriority());
 
-            if (currentCount % modulo == 0 || currentCount >= perfParams.getNoOfMessagesToSend()) {
+            if (currentCount % modulo == 0 || currentCount >= awaitedNumberOfMessages) {
                 double duration = (1.0 * System.currentTimeMillis() - start) / 1000;
                 log.info(String.format("[%s] received %6d messages in %2.2fs", Thread.currentThread().getName(), currentCount, duration));
                 if (!perfParams.isDisableTimestamp()) {
@@ -79,7 +87,7 @@ class PerfListener implements MessageListener {
             }
 
             boolean committed = checkCommit();
-            if (currentCount == perfParams.getNoOfMessagesToSend()) {
+            if (currentCount >= awaitedNumberOfMessages) {
                 if (!committed) {
                     checkCommit();
                 }
