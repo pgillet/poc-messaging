@@ -38,12 +38,14 @@ class PerfListener implements MessageListener {
         this.session = session;
         this.countDownLatch = countDownLatch;
         warmingUp = perfParams.getNoOfWarmupMessages() > 0;
-        modulo = perfParams.getThrottleRate() != -1 ? 10 : 1000;
         if (perfParams.getDestinationType() == DestinationType.TOPIC) {
             awaitedNumberOfMessages = perfParams.getNoOfMessagesToSend() * perfParams.getNumProducers();
+            modulo = perfParams.getThrottleRate() != -1 ? 10 : 1000;
         } else {
             // Average
             awaitedNumberOfMessages = perfParams.getNoOfMessagesToSend() / perfParams.getNumConsumers();
+            // We display every message
+            modulo = perfParams.getThrottleRate() != -1 ? 1 : 1000;
         }
     }
 
