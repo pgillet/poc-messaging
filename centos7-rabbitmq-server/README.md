@@ -69,6 +69,8 @@ ls -l ./result
 Add the following options in `rabbitmq.conf`:
 
 ```
+listeners.ssl.default = 5671
+
 ssl_options.cacertfile = /path/to/ca_certificate.pem
 ssl_options.certfile   = /path/to/server_certificate.pem
 ssl_options.keyfile    = /path/to/server_key.pem
