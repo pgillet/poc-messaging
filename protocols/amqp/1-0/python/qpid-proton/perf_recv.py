@@ -39,7 +39,7 @@ class Recv(MessagingHandler):
         ssl_domain = SSLDomain(mode=SSLDomain.MODE_CLIENT)
         ssl_domain.set_trusted_ca_db(env.certificate_db)
         ssl_domain.set_credentials(env.cert_file, env.key_file, env.password)
-        conn = event.container.connect(urls=self.urls, ssl_domain=ssl_domain)
+        conn = event.container.connect(urls=self.urls, ssl_domain=ssl_domain, user=env.username, password=env.password)
         event.container.create_receiver(conn, self.address)
 
     def on_message(self, event):

@@ -20,22 +20,17 @@
 
 from __future__ import print_function, unicode_literals
 import optparse
+import time
+
 from proton import Message
+from proton._reactor import AtLeastOnce
 from proton.handlers import MessagingHandler
 from proton.reactor import Container
 from proton import SSLDomain
 
 import env
 
-
-# TODO
-# Message variable size
-# Throttle rate
-
-
-# Destination name
-# Auth username/password
-# TLS
+import os
 
 class Send(MessagingHandler):
     def __init__(self, urls, address, messages):
@@ -50,14 +45,16 @@ class Send(MessagingHandler):
         ssl_domain = SSLDomain(mode=SSLDomain.MODE_CLIENT)
         ssl_domain.set_trusted_ca_db(env.certificate_db)
         ssl_domain.set_credentials(env.cert_file, env.key_file, env.password)
-        conn = event.container.connect(urls=self.urls, ssl_domain=ssl_domain)
-        event.container.create_sender(conn, self.address)
+        conn = event.container.connect(urls=self.urls, ssl_domain=ssl_domain) #, user=env.username, password=env.password)
+        event.container.create_sender(conn, self.address, options=AtLeastOnce())
 
     def on_sendable(self, event):
         while event.sender.credit and self.sent < self.total:
-            msg = Message(id=(self.sent+1), body={'sequence':(self.sent+1)})
+            msg = Message(id=(self.sent+1), body=os.urandom(env.message_size))
             event.sender.send(msg)
             self.sent += 1
+            if env.throttle > 0:
+                time.sleep(env.throttle)
 
     def on_accepted(self, event):
         self.confirmed += 1
