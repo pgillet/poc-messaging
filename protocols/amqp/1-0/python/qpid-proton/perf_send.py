@@ -40,19 +40,30 @@ class Send(MessagingHandler):
         self.sent = 0
         self.confirmed = 0
         self.total = messages
+        self.start = 0
 
     def on_start(self, event):
         ssl_domain = SSLDomain(mode=SSLDomain.MODE_CLIENT)
         ssl_domain.set_trusted_ca_db(env.certificate_db)
         ssl_domain.set_credentials(env.cert_file, env.key_file, env.password)
         conn = event.container.connect(urls=self.urls, ssl_domain=ssl_domain) #, user=env.username, password=env.password)
+        # at-least-once delivery semantics for message delivery
         event.container.create_sender(conn, self.address, options=AtLeastOnce())
+        self.start = time.time()
 
     def on_sendable(self, event):
         while event.sender.credit and self.sent < self.total:
             msg = Message(id=(self.sent+1), body=os.urandom(env.message_size))
+            msg._set_creation_time(time.time()) # not sure about that
             event.sender.send(msg)
             self.sent += 1
+
+            # Print info
+            if self.sent % env.print_info_modulus == 0:
+                duration = time.time() - self.start
+                average = self.sent / duration
+                print(f'Average: {average:.2f} msg/s (Sent {self.sent} messages in {duration:.2f}s')
+
             if env.throttle > 0:
                 time.sleep(env.throttle)
 
@@ -71,7 +82,7 @@ parser.add_option("-u", "--urls", default=env.server_addr,
                   help="list of URL strings of process to try to connect to. Ex: [host1:5672, host2:5672, host2:5672]")
 parser.add_option("-a", "--address", default=env.address,
                   help="address to which messages are sent (default %default)")
-parser.add_option("-m", "--messages", type="int", default=100,
+parser.add_option("-m", "--messages", type="int", default=env.num_messages,
                   help="number of messages to send (default %default)")
 opts, args = parser.parse_args()
 

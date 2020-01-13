@@ -8,13 +8,16 @@
 server_addr = ["amqps://34.77.53.43:5671", "amqps://35.195.128.110:5671", "amqps://34.76.93.87:5671"]
 
 # Destination name
-address = 'jms.queue.PerfQueue'
+address = '/topic/test'
 
 # Interval between the send of two messages in seconds
-throttle = -1
+throttle = 0
 
 # Message size in bytes (Ex: 1000 = 1 kb, 1024 = 1 kib)
 message_size = 15000
+
+# Number of messages to be sent/received
+num_messages = 100000
 
 # Auth
 username = 'meteofr'
@@ -25,3 +28,6 @@ certificate_db = '/home/pascal/Workbench/Projects/MeteoFrance/tls-gen/basic/tls/
 cert_file = '/home/pascal/Workbench/Projects/MeteoFrance/tls-gen/basic/tls/client_certificate.pem'
 key_file = '/home/pascal/Workbench/Projects/MeteoFrance/tls-gen/basic/tls/client_key.pem'
 password = 'bunnies'
+
+
+print_info_modulus = 10

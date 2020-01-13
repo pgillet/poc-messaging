@@ -19,7 +19,9 @@
 #
 
 from __future__ import print_function
+
 import optparse
+import time
 
 from proton import SSLDomain
 from proton.handlers import MessagingHandler
@@ -34,21 +36,34 @@ class Recv(MessagingHandler):
         self.address = address
         self.expected = count
         self.received = 0
+        self.start = 0
+        self.sum_of_latencies = 0
 
     def on_start(self, event):
         ssl_domain = SSLDomain(mode=SSLDomain.MODE_CLIENT)
         ssl_domain.set_trusted_ca_db(env.certificate_db)
         ssl_domain.set_credentials(env.cert_file, env.key_file, env.password)
-        conn = event.container.connect(urls=self.urls, ssl_domain=ssl_domain, user=env.username, password=env.password)
+        conn = event.container.connect(urls=self.urls, ssl_domain=ssl_domain) #, user=env.username, password=env.password)
         event.container.create_receiver(conn, self.address)
+        self.start = time.time()
 
     def on_message(self, event):
-        if event.message.id and event.message.id < self.received:
+        #if event.message.id and event.message.id < self.received:
             # ignore duplicate message
-            return
+        #    return
         if self.expected == 0 or self.received < self.expected:
-            print(event.message.body)
+            #print(event.message.body)
             self.received += 1
+
+            # Print info
+            if self.received % env.print_info_modulus == 0:
+                duration = time.time() - self.start
+                average = self.received / duration
+                print(f'Average: {average:.2f} msg/s (Received {self.received} messages in {duration:.2f}s)')
+                self.sum_of_latencies += (time.time() - event.message.creation_time)
+                avg_latency = self.sum_of_latencies / self.received
+                print(f'Average time taken for a sent message to be received is {avg_latency:.2f}s')
+
             if self.received == self.expected:
                 event.receiver.close()
                 event.connection.close()
@@ -58,7 +73,7 @@ parser.add_option("-u", "--urls", default=env.server_addr,
                   help="list of URL strings of process to try to connect to. Ex: [host1:5672, host2:5672, host2:5672]")
 parser.add_option("-a", "--address", default=env.address,
                   help="address from which messages are received (default %default)")
-parser.add_option("-m", "--messages", type="int", default=100,
+parser.add_option("-m", "--messages", type="int", default=env.num_messages,
                   help="number of messages to receive; 0 receives indefinitely (default %default)")
 opts, args = parser.parse_args()
 
