@@ -34,6 +34,7 @@ class Consumer implements Runnable {
             CountDownLatch countDownLatch = new CountDownLatch(1);
             PerfListener listener = new PerfListener(this.context, session, countDownLatch);
             consumer.setMessageListener(listener);
+            log.info(String.format("Consumer %s has started", Thread.currentThread().getName()));
             countDownLatch.await();
         } catch (InterruptedException e) {
             log.log(Level.SEVERE, e.getMessage(), e);
