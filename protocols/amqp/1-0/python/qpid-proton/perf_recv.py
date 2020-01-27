@@ -37,7 +37,7 @@ class Recv(MessagingHandler):
         self.expected = count
         self.received = 0
         self.start = 0
-        self.sum_of_latencies = 0
+        self.total = 0
 
     def on_start(self, event):
         ssl_domain = SSLDomain(mode=SSLDomain.MODE_CLIENT)
@@ -55,14 +55,16 @@ class Recv(MessagingHandler):
             #print(event.message.body)
             self.received += 1
 
+            latency = time.time() - float(event.message.creation_time)
+            self.total += latency
+            avg_latency = self.total / self.received
+
             # Print info
             if self.received % env.print_info_modulus == 0:
                 duration = time.time() - self.start
                 average = self.received / duration
                 print(f'Average: {average:.2f} msg/s (Received {self.received} messages in {duration:.2f}s)')
-                self.sum_of_latencies += (time.time() - event.message.creation_time)
-                avg_latency = self.sum_of_latencies / self.received
-                print(f'Average time taken for a sent message to be received is {avg_latency:.2f}s')
+                print(f'Average time taken for a sent message to be received is {avg_latency:.3f} s')
 
             if self.received == self.expected:
                 event.receiver.close()
