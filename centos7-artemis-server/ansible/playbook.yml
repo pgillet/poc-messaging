@@ -1,0 +1,10 @@
+---
+- hosts: artemis_servers
+  roles:
+    - role: artemis
+      become: yes
+  vars:
+    artemis_web_host: "{{ artemis_host }}"
+    jolokia_cors: "*"
+
+

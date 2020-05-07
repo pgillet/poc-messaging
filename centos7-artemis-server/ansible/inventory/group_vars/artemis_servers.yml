@@ -1,0 +1,5 @@
+ansible_user: 
+jgroups_bucket: poc-messaging-jgroups-ping
+access_key: 
+secret_access_key: 
+

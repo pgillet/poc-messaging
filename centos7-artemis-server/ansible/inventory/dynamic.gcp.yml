@@ -1,0 +1,15 @@
+plugin: gcp_compute
+projects:
+  - poc-messaging
+auth_kind: serviceaccount
+service_account_file: /path/to/key.json
+#filters:
+#  - name = artemis-broker-01
+keyed_groups:
+  - separator: ''
+    key: labels['group']
+  - separator: ''
+    # master or slave server?
+    key: labels['server-type']
+compose:
+  artemis_host: networkInterfaces[0].networkIP
